@@ -272,8 +272,10 @@ elif page.startswith("\U0001F50D"):
     query = st.text_input("Search for a food", placeholder="e.g. chicken breast, oatmeal, banana")
     if query:
         with st.spinner("Searching USDA database..."):
-            results = food_api.search_usda(query)
-        if results:
+            results, error = food_api.search_usda(query)
+        if error:
+            st.error(error)
+        elif results:
             for i, food in enumerate(results):
                 with st.expander(f"{food['name']} — {food['brand']}" if food["brand"] else food["name"]):
                     c1, c2, c3, c4 = st.columns(4)
@@ -332,8 +334,10 @@ elif page.startswith("\U0001F4F7"):
 
     if barcode:
         with st.spinner("Looking up barcode..."):
-            result = food_api.lookup_barcode(barcode)
-        if result:
+            result, error = food_api.lookup_barcode(barcode)
+        if error:
+            st.error(error)
+        elif result:
             st.success(f"Found: **{result['name']}** — {result['brand']}")
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Calories", f"{result['calories']:.0f}")
@@ -351,8 +355,6 @@ elif page.startswith("\U0001F4F7"):
                     sodium=result["sodium"], barcode=barcode, source="openfoodfacts",
                 )
                 st.success(f"Saved '{result['name']}'!")
-        else:
-            st.warning("Barcode not found in Open Food Facts database.")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -589,6 +591,27 @@ elif page.startswith("\u2699"):
             f"Goal adjustment: {suggestion['deficit_surplus']:+d} kcal | "
             f"Data quality: {suggestion['data_quality']}"
         )
+
+    # API key config
+    st.subheader("USDA API Key")
+    st.caption(
+        "The default DEMO_KEY has strict rate limits (~30 requests/hour). "
+        "Get a free personal key for unlimited use."
+    )
+    current_key = food_api.USDA_API_KEY
+    display_key = current_key if current_key == "DEMO_KEY" else current_key[:8] + "..."
+    st.text(f"Current key: {display_key}")
+    new_key = st.text_input(
+        "USDA API Key",
+        placeholder="Paste your key from https://fdc.nal.usda.gov/api-key-signup",
+        label_visibility="collapsed",
+    )
+    if st.button("Update API Key"):
+        if new_key.strip():
+            food_api.USDA_API_KEY = new_key.strip()
+            st.success("API key updated for this session! To make it permanent, set the USDA_API_KEY environment variable.")
+        else:
+            st.error("Please enter a valid API key.")
 
     # Data management
     st.subheader("Your Food Library")
